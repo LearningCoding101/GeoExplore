@@ -1,20 +1,16 @@
 import React, { useEffect, useState } from "react";
-import { StyleSheet, Text, View, Button } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import * as Location from "expo-location";
-import MapView, { Marker, Polygon, Polyline } from "react-native-maps";
+import MapView, { Polygon, Polyline } from "react-native-maps";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { feature } from "topojson-client";
+import * as turf from "@turf/turf";
 
-// Importing the world data
-import countries from "world-atlas/countries-50m.json";
-const worldGeoJSON = feature(countries, countries.objects.countries);
-
-const DefaultMap = () => {
+const DefaultMap = ({ selectedArea }) => {
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [locations, setLocations] = useState([]);
-  const [selectedArea, setSelectedArea] = useState(null);
+  const [buffer, setBuffer] = useState([]);
 
   useEffect(() => {
     (async () => {
@@ -51,6 +47,21 @@ const DefaultMap = () => {
               "userLocations",
               JSON.stringify(updatedLocations)
             );
+
+            // Calculate the buffer
+            if (updatedLocations.length > 1) {
+              const line = turf.lineString(
+                updatedLocations.map((loc) => [loc.longitude, loc.latitude])
+              );
+              const buffered = turf.buffer(line, 0.01, { units: "kilometers" });
+              const bufferCoords = buffered.geometry.coordinates[0].map(
+                ([longitude, latitude]) => ({
+                  latitude,
+                  longitude,
+                })
+              );
+              setBuffer(bufferCoords);
+            }
             return updatedLocations;
           });
         }
@@ -61,22 +72,6 @@ const DefaultMap = () => {
       };
     })();
   }, []);
-
-  const selectCountry = (countryName) => {
-    const country = worldGeoJSON.features.find(
-      (f) => f.properties.name === countryName
-    );
-    if (country) {
-      console.log("Country data:", JSON.stringify(country.geometry));
-      setSelectedArea({
-        name: countryName,
-        type: country.geometry.type,
-        coordinates: country.geometry.coordinates,
-      });
-    } else {
-      setErrorMsg("Country not found");
-    }
-  };
 
   if (errorMsg) {
     return (
@@ -101,25 +96,28 @@ const DefaultMap = () => {
         initialRegion={{
           latitude: location?.latitude || 0,
           longitude: location?.longitude || 0,
-          latitudeDelta: 20.0, // Adjusted to show a larger area
-          longitudeDelta: 20.0,
+          latitudeDelta: 0.1, // Adjusted to show a larger area
+          longitudeDelta: 0.1,
         }}
+        showsUserLocation={true}
+        zoomEnabled={true}
+        scrollEnabled={true}
       >
-        {location && (
-          <Marker
-            coordinate={{
-              latitude: location.latitude,
-              longitude: location.longitude,
-            }}
-            title="You are here"
-          />
-        )}
         {locations.length > 1 && (
-          <Polyline
-            coordinates={locations}
-            strokeColor="#00FF00"
-            strokeWidth={3}
-          />
+          <>
+            <Polyline
+              coordinates={locations}
+              strokeColor="#00FF00"
+              strokeWidth={3}
+            />
+            {/* Render the buffer zone */}
+            <Polygon
+              coordinates={buffer}
+              strokeColor="transparent"
+              strokeWidth={0}
+              fillColor="rgba(0,0,255,0.2)" // Transparent blue
+            />
+          </>
         )}
         {selectedArea && selectedArea.type === "Polygon" && (
           <Polygon
@@ -132,8 +130,8 @@ const DefaultMap = () => {
           />
         )}
         {selectedArea &&
-          selectedArea.type === "MultiPolygon" &&
-          selectedArea.coordinates.map((polygon, index) => (
+          selectedArea.geometry.type === "MultiPolygon" &&
+          selectedArea.geometry.coordinates.map((polygon, index) => (
             <Polygon
               key={index}
               coordinates={polygon[0].map(([longitude, latitude]) => ({
@@ -146,9 +144,6 @@ const DefaultMap = () => {
             />
           ))}
       </MapView>
-      <View style={styles.buttonContainer}>
-        <Button title="Vietnam" onPress={() => selectCountry("Vietnam")} />
-      </View>
       {selectedArea && (
         <View style={styles.infoBox}>
           <Text>{selectedArea.name}</Text>
@@ -164,9 +159,6 @@ const styles = StyleSheet.create({
   },
   mainMap: {
     flex: 1,
-  },
-  buttonContainer: {
-    padding: 10,
   },
   infoBox: {
     padding: 10,
