@@ -25,7 +25,9 @@
     "react-native-safe-area-context": "4.10.5",
     "react-native-screens": "3.31.1",
     "topojson-client": "^3.1.0",
-    "world-atlas": "^2.0.2"
+    "world-atlas": "^2.0.2",
+    "expo-task-manager": "~11.8.2",
+    "expo-background-fetch": "~12.0.1"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0"
