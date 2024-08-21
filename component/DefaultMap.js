@@ -20,7 +20,6 @@ const DefaultMap = ({ selectedArea }) => {
     registerBackgroundFetch();
     BackgroundFetch.setMinimumIntervalAsync(15 * 60);
   }, []);
-
   //calculate the total area covered everytime new locations is added
   useEffect(() => {
     if (selectedArea == null) {
@@ -31,33 +30,21 @@ const DefaultMap = ({ selectedArea }) => {
       const path = turf.lineString(
         locations.map((loc) => [loc.longitude, loc.latitude])
       );
-      const areaCovered = turf.buffer(path, 10, { units: "meters" });
+      const areaCovered = turf.buffer(path, 10, { units: "kilometers" });
       let totalArea;
       if (selectedArea.geometry.type === "MultiPolygon") {
         totalArea = turf.multiPolygon(selectedArea.geometry.coordinates);
       } else {
         totalArea = turf.polygon(selectedArea.geometry.coordinates);
       }
-      console.log("Selected Area:", selectedArea);
-      console.log("Area Covered:", areaCovered);
 
       // Calculate intersection and explored area
       let intersectArea = null;
-      if (totalArea.geometry.type === "MultiPolygon") {
-        // If totalArea is a MultiPolygon, intersect with each polygon
-        totalArea.geometry.coordinates.forEach((polygonCoords) => {
-          const polygon = turf.polygon(polygonCoords);
-          const intersection = turf.intersect(polygon, areaCovered);
-          if (intersection) {
-            intersectArea = intersectArea
-              ? turf.union(intersectArea, intersection)
-              : intersection;
-          }
-        });
-      } else {
-        // If totalArea is a Polygon, intersect directly
-        intersectArea = turf.intersect(totalArea, areaCovered);
-      }
+
+      // If totalArea is a Polygon, intersect directly
+      intersectArea = turf.intersect(
+        turf.featureCollection([totalArea, areaCovered])
+      );
 
       if (intersectArea) {
         const explored = turf.area(intersectArea) / turf.area(totalArea);
@@ -90,6 +77,8 @@ const DefaultMap = ({ selectedArea }) => {
         setErrorMsg("Failed to get current location");
       }
 
+      const MIN_DISTANCE = 10; // Minimum distance in meters
+
       const watchId = await Location.watchPositionAsync(
         {
           accuracy: Location.Accuracy.High,
@@ -99,6 +88,21 @@ const DefaultMap = ({ selectedArea }) => {
         (newLocation) => {
           const { latitude, longitude } = newLocation.coords;
           const newCoords = { latitude, longitude };
+
+          // Calculate distance between last location and new location
+          if (locations.length > 0) {
+            const lastLocation = locations[locations.length - 1];
+            const distance = turf.distance(
+              turf.point([lastLocation.longitude, lastLocation.latitude]),
+              turf.point([longitude, latitude]),
+              { units: "meters" }
+            );
+
+            if (distance < MIN_DISTANCE) {
+              return; // Do not capture the location if the user hasn't moved significantly
+            }
+          }
+
           setLocations((prevLocation) => {
             const updatedLocations = [...prevLocation, newCoords];
             AsyncStorage.setItem(
@@ -122,7 +126,7 @@ const DefaultMap = ({ selectedArea }) => {
               const line = turf.lineString(
                 updatedLocations.map((loc) => [loc.longitude, loc.latitude])
               );
-              const buffered = turf.buffer(line, 0.01, { units: "kilometers" });
+              const buffered = turf.buffer(line, 100, { units: "kilometers" });
               const bufferCoords = buffered.geometry.coordinates[0].map(
                 ([longitude, latitude]) => ({
                   latitude,
@@ -201,9 +205,9 @@ const DefaultMap = ({ selectedArea }) => {
             />
           </>
         )}
-        {selectedArea && selectedArea.type === "Polygon" && (
+        {selectedArea && selectedArea.geometry.type === "Polygon" && (
           <Polygon
-            coordinates={selectedArea.coordinates[0].map(
+            coordinates={selectedArea.geometry.coordinates[0].map(
               ([longitude, latitude]) => ({ latitude, longitude })
             )}
             strokeColor="#FF0000"
@@ -231,7 +235,7 @@ const DefaultMap = ({ selectedArea }) => {
           <Text>{selectedArea.name}</Text>
         </View>
       )}
-      <Text style={styles.explored}>{exploredArea}</Text>
+      <Text style={styles.explored}>{(exploredArea * 100).toFixed(2)}%</Text>
     </SafeAreaView>
   );
 };
