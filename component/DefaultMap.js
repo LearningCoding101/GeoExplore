@@ -7,8 +7,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import * as turf from "@turf/turf";
 import * as BackgroundFetch from "expo-background-fetch";
 import { registerBackgroundFetch } from "../task/location-fetch";
+import { ActivityIndicator } from "react-native";
+import SelectMapType from "./SelectMapType";
 
-const DefaultMap = ({ selectedArea }) => {
+const DefaultMap = ({mapType, selectedArea }) => {
   const [location, setLocation] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [locations, setLocations] = useState([]);
@@ -170,7 +172,7 @@ const DefaultMap = ({ selectedArea }) => {
   if (!location) {
     return (
       <View style={styles.centerContainer}>
-        <Text>Loading...</Text>
+        <ActivityIndicator size={"large"} />
       </View>
     );
   }
@@ -188,6 +190,7 @@ const DefaultMap = ({ selectedArea }) => {
         showsUserLocation={true}
         zoomEnabled={true}
         scrollEnabled={true}
+        mapType={mapType? mapType : "standard"}
       >
         {locations.length > 1 && (
           <>
