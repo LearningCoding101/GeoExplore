@@ -64,15 +64,14 @@ export default function App() {
       setFilteredResults([]);
     }
   };
-  const handleMapTypeChange = (value) => {
-    setMapType(value);
-  }
+
   const selectArea = (area) => {
     setSelectedArea(area);
     setModalVisible(false);
   };
-  const selectMapType = () => {
-    setMapTypeModal(true);
+  const selectMapType = (value) => {
+    setMapType(value);
+    setMapTypeModal(false);
   }
   return (
     <SafeAreaView style={styles.container}>
@@ -83,11 +82,11 @@ export default function App() {
           <Ionicons name="search" size={25} />
 
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => selectMapType()} style={styles.topButton}>
+        <TouchableOpacity onPress={() => setMapTypeModal(mapTypeModal? false : true)} style={styles.topButton}>
           <Ionicons name="layers" size={25} />
 
         </TouchableOpacity>
-        <SelectMapType onMapTypeChange={handleMapTypeChange} visible={mapTypeModal} />
+        <SelectMapType onMapTypeChange={selectMapType} visible={mapTypeModal} />
 
       </View>
 
@@ -115,7 +114,19 @@ export default function App() {
               </TouchableOpacity>
             )}
           />
-          <Button title="Close" onPress={() => setModalVisible(false)} />
+          <TouchableOpacity style={styles.closeButton} title="Close" onPress={() => setModalVisible(false)} >
+            <Ionicons
+              name="close"
+              style={{
+                padding: 10,
+                borderColor: "black",
+                borderWidth: 2, // 2px border width
+                borderRadius: 25, // Circular border
+              }}
+              size={25}
+            />
+
+          </TouchableOpacity>
         </View>
       </Modal>
     </SafeAreaView>
@@ -125,6 +136,11 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  closeButton: {
+    flex: 0.25,
+    justifyContent: "center",
+    alignItems: "center"
   },
   topBar: {
     flexDirection: "column", // Changed to row for horizontal layout

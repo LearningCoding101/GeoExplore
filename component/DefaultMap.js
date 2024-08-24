@@ -18,6 +18,7 @@ const DefaultMap = ({mapType, selectedArea }) => {
   const [color, setColor] = useState("rgba(0,0,255,0.2)"); // Default color
   const [zoneFrequency, setZoneFrequency] = useState({});
   const [exploredArea, setExploredArea] = useState(0);
+  const [bufferSize, setBufferSize] = useState(100);
   useEffect(() => {
     registerBackgroundFetch();
     BackgroundFetch.setMinimumIntervalAsync(15 * 60);
@@ -32,7 +33,7 @@ const DefaultMap = ({mapType, selectedArea }) => {
       const path = turf.lineString(
         locations.map((loc) => [loc.longitude, loc.latitude])
       );
-      const areaCovered = turf.buffer(path, 10, { units: "kilometers" });
+      const areaCovered = turf.buffer(path, bufferSize, { units: "meters" });
       let totalArea;
       if (selectedArea.geometry.type === "MultiPolygon") {
         totalArea = turf.multiPolygon(selectedArea.geometry.coordinates);
@@ -128,7 +129,7 @@ const DefaultMap = ({mapType, selectedArea }) => {
               const line = turf.lineString(
                 updatedLocations.map((loc) => [loc.longitude, loc.latitude])
               );
-              const buffered = turf.buffer(line, 100, { units: "kilometers" });
+              const buffered = turf.buffer(line, bufferSize, { units: "meters" });
               const bufferCoords = buffered.geometry.coordinates[0].map(
                 ([longitude, latitude]) => ({
                   latitude,
@@ -232,13 +233,17 @@ const DefaultMap = ({mapType, selectedArea }) => {
               fillColor="rgba(255,0,0,0.1)"
             />
           ))}
+          <View style={styles.explored} >
+          <Text style={{textAlign: "center"}} >{(exploredArea * 100).toFixed(2)}%</Text>
+          </View>
+                
+
       </MapView>
       {selectedArea && (
         <View style={styles.infoBox}>
           <Text>{selectedArea.name}</Text>
         </View>
       )}
-      <Text style={styles.explored}>{(exploredArea * 100).toFixed(2)}%</Text>
     </SafeAreaView>
   );
 };
@@ -246,9 +251,12 @@ const DefaultMap = ({mapType, selectedArea }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    justifyContent: "center"
   },
   mainMap: {
     flex: 1,
+    justifyContent : "flex-end",
+    alignItems:"center"
   },
   infoBox: {
     padding: 10,
@@ -261,10 +269,17 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   explored: {
-    position: "absolute",
-    bottom: 35,
-    left: "50%",
-  },
+    width: 70,
+    height: 30, // Add height to make it a rectangle
+    marginBottom: 50,
+    backgroundColor: "white",
+    borderWidth: 2, // Border thickness
+    borderColor: "black", // Border color
+    borderRadius: 8, // Rounded corners
+    justifyContent: 'center', // Center text vertically
+    alignItems: 'center', // Center text horizontally
+    textAlign: "center", // Center text horizontally (not needed here, but kept for consistency)
+  }
 });
 
 export default DefaultMap;
